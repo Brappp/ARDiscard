@@ -197,7 +197,7 @@ internal sealed class InventoryUtils
 
 
                 //PluginLog.Verbose($"{i} → {item->ItemID}");
-                if (_configuration.ShouldDiscardItem(item->ItemId, itemInfo.UiCategory))
+                if (_configuration.ShouldDiscardItem(item->ItemId))
                 {
                     _pluginLog.Verbose(
                         $"Found item {item->ItemId} to discard in inventory {inventoryType} in slot {i}");

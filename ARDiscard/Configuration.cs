@@ -9,19 +9,9 @@ internal sealed class Configuration : IPluginConfiguration
 
     
     /// <summary>
-    /// Individual items selected for discard (replaces old DiscardingItems)
+    /// Simple set of item IDs that should be discarded
     /// </summary>
-    public HashSet<uint> SelectedDiscardItems { get; set; } = new();
-    
-    /// <summary>
-    /// Item categories where entire group is selected for discard
-    /// </summary>
-    public HashSet<uint> SelectedDiscardCategories { get; set; } = new();
-    
-    /// <summary>
-    /// Items within selected categories that user explicitly excluded
-    /// </summary>
-    public HashSet<uint> ExcludedFromCategoryDiscard { get; set; } = new();
+    public HashSet<uint> ItemsToDiscard { get; set; } = new();
     
     public List<uint> BlacklistedItems { get; set; } = new();
 
@@ -64,17 +54,9 @@ internal sealed class Configuration : IPluginConfiguration
     /// <summary>
     /// Checks if an item should be discarded based on current configuration
     /// </summary>
-    public bool ShouldDiscardItem(uint itemId, uint categoryId)
+    public bool ShouldDiscardItem(uint itemId)
     {
-        // If entire category is selected and item isn't explicitly excluded
-        if (SelectedDiscardCategories.Contains(categoryId) && !ExcludedFromCategoryDiscard.Contains(itemId))
-            return true;
-            
-        // If item is individually selected
-        if (SelectedDiscardItems.Contains(itemId))
-            return true;
-            
-        return false;
+        return ItemsToDiscard.Contains(itemId);
     }
 
     public static Configuration CreateNew()

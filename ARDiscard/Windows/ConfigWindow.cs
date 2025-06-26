@@ -96,22 +96,11 @@ internal sealed class ConfigWindow : LWindow
             ImGui.Text("Current Selection Summary:");
             ImGui.Indent();
             
-            if (_configuration.SelectedDiscardCategories.Count > 0)
+            if (_configuration.ItemsToDiscard.Count > 0)
             {
-                ImGui.TextColored(ImGuiColors.HealerGreen, $"Selected Categories: {_configuration.SelectedDiscardCategories.Count}");
+                ImGui.TextColored(ImGuiColors.HealerGreen, $"Items Selected for Discard: {_configuration.ItemsToDiscard.Count}");
             }
-            
-            if (_configuration.SelectedDiscardItems.Count > 0)
-            {
-                ImGui.TextColored(ImGuiColors.DalamudYellow, $"Individual Items: {_configuration.SelectedDiscardItems.Count}");
-            }
-            
-            if (_configuration.ExcludedFromCategoryDiscard.Count > 0)
-            {
-                ImGui.TextColored(ImGuiColors.DalamudRed, $"Excluded from Categories: {_configuration.ExcludedFromCategoryDiscard.Count}");
-            }
-            
-            if (_configuration.SelectedDiscardCategories.Count == 0 && _configuration.SelectedDiscardItems.Count == 0)
+            else
             {
                 ImGui.TextColored(ImGuiColors.DalamudGrey, "No items selected for discard");
             }
@@ -275,14 +264,14 @@ internal sealed class ConfigWindow : LWindow
 
     internal bool AddToDiscardList(uint itemId) 
     {
-        _configuration.SelectedDiscardItems.Add(itemId);
+        _configuration.ItemsToDiscard.Add(itemId);
         Save();
         return true;
     }
 
     internal bool RemoveFromDiscardList(uint itemId) 
     {
-        bool removed = _configuration.SelectedDiscardItems.Remove(itemId);
+        bool removed = _configuration.ItemsToDiscard.Remove(itemId);
         if (removed)
             Save();
         return removed;

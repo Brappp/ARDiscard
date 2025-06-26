@@ -25,7 +25,7 @@ public sealed class AutoDiscardPlogon : IDalamudPlugin
     private readonly Configuration _configuration;
     private readonly ConfigWindow _configWindow;
     private readonly DiscardWindow _discardWindow;
-    private readonly InventoryBrowserWindow _inventoryBrowserWindow;
+    private readonly SimpleInventoryBrowserWindow _inventoryBrowserWindow;
 
     private readonly IDalamudPluginInterface _pluginInterface;
     private readonly IChatGui _chatGui;
@@ -89,7 +89,7 @@ public sealed class AutoDiscardPlogon : IDalamudPlugin
         _discardWindow = new(_inventoryUtils, itemCache, _iconCache, clientState, condition, _configuration);
         _windowSystem.AddWindow(_discardWindow);
 
-        _inventoryBrowserWindow = new(_inventoryUtils, itemCache, _iconCache, clientState, condition, _configuration, listManager);
+        _inventoryBrowserWindow = new(_inventoryUtils, itemCache, _iconCache, clientState, _configuration, listManager);
         _windowSystem.AddWindow(_inventoryBrowserWindow);
 
         _configWindow = new(_pluginInterface, _configuration, itemCache, listManager, clientState, condition);
@@ -108,11 +108,10 @@ public sealed class AutoDiscardPlogon : IDalamudPlugin
             _taskManager?.Abort();
             _taskManager?.Enqueue(() => DiscardNextItem(PostProcessType.ManuallyStarted, filter));
         };
-        _inventoryBrowserWindow.OpenConfigurationClicked += (_, _) => OpenConfigUi();
-        _inventoryBrowserWindow.DiscardAllClicked += (_, filter) =>
+        _inventoryBrowserWindow.DiscardSelectedClicked += (_, itemIds) =>
         {
             _taskManager?.Abort();
-            _taskManager?.Enqueue(() => DiscardNextItem(PostProcessType.ManuallyStarted, filter));
+            _taskManager?.Enqueue(() => DiscardNextItem(PostProcessType.ManuallyStarted, new ItemFilter { ItemIds = itemIds }));
         };
 
         ECommonsMain.Init(_pluginInterface, this);

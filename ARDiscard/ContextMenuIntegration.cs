@@ -64,7 +64,7 @@ internal sealed class ContextMenuIntegration : IDisposable
             if (!_configWindow.CanItemBeConfigured(item.ItemId))
                 return;
 
-            if (_configuration.SelectedDiscardItems.Contains(item.ItemId))
+            if (_configuration.ItemsToDiscard.Contains(item.ItemId))
                 args.AddMenuItem(_removeInventoryItem);
             else if (_itemCache.TryGetItem(item.ItemId, out ItemCache.CachedItemInfo? cachedItemInfo) &&
                      cachedItemInfo.CanBeDiscarded(_listManager))
@@ -82,7 +82,7 @@ internal sealed class ContextMenuIntegration : IDisposable
             if (itemId > 500_000)
                 itemId -= 500_000;
 
-            if (_configuration.SelectedDiscardItems.Contains(itemId))
+            if (_configuration.ItemsToDiscard.Contains(itemId))
             {
                 args.AddMenuItem(new MenuItem
                 {

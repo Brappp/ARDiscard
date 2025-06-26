@@ -39,11 +39,7 @@ internal sealed class AutoDiscardIpc
 
     private IReadOnlySet<uint> GetItemsToDiscard()
     {
-        // Return combined set of individually selected items and items from selected categories
-        var allSelectedItems = new HashSet<uint>(_configuration.SelectedDiscardItems);
-        // Note: For IPC, we'd need access to ItemCache to resolve category items
-        // For now, return just the individually selected items
-        return allSelectedItems.ToImmutableHashSet();
+        return _configuration.ItemsToDiscard.ToImmutableHashSet();
     }
 
     private bool CheckIsRunning() => _discardWindow.Locked;
