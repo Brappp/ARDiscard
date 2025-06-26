@@ -11,13 +11,13 @@ internal abstract class ItemListTab
 {
     private const int ResultLimit = 200;
 
-    private readonly ConfigWindow _parent;
+    private readonly UnifiedInventoryWindow _parent;
 
     private List<(uint ItemId, string Name)> _searchResults = new();
     private string _itemName = string.Empty;
     private bool _resetKeyboardFocus = true;
 
-    protected ItemListTab(ConfigWindow parent, ItemCache itemCache, List<uint> initialItems)
+    protected ItemListTab(UnifiedInventoryWindow parent, ItemCache itemCache, List<uint> initialItems)
     {
         _parent = parent;
         SelectedItems.AddRange(initialItems.Select(x => (x, itemCache.GetItemName(x))).ToList());

@@ -15,20 +15,20 @@ internal sealed class ContextMenuIntegration : IDisposable
     private readonly ItemCache _itemCache;
     private readonly Configuration _configuration;
     private readonly IListManager _listManager;
-    private readonly ConfigWindow _configWindow;
+    private readonly UnifiedInventoryWindow _unifiedInventoryWindow;
     private readonly IGameGui _gameGui;
     private readonly IContextMenu _contextMenu;
     private readonly MenuItem _addInventoryItem;
     private readonly MenuItem _removeInventoryItem;
 
     public ContextMenuIntegration(IChatGui chatGui, ItemCache itemCache, Configuration configuration,
-        IListManager listManager, ConfigWindow configWindow, IGameGui gameGui, IContextMenu contextMenu)
+        IListManager listManager, UnifiedInventoryWindow unifiedInventoryWindow, IGameGui gameGui, IContextMenu contextMenu)
     {
         _chatGui = chatGui;
         _itemCache = itemCache;
         _configuration = configuration;
         _listManager = listManager;
-        _configWindow = configWindow;
+        _unifiedInventoryWindow = unifiedInventoryWindow;
         _gameGui = gameGui;
         _contextMenu = contextMenu;
         _addInventoryItem = new MenuItem
@@ -61,7 +61,7 @@ internal sealed class ContextMenuIntegration : IDisposable
                 return;
 
             var item = targetInventory.TargetItem.Value;
-            if (!_configWindow.CanItemBeConfigured(item.ItemId))
+            if (!_unifiedInventoryWindow.CanItemBeConfigured(item.ItemId))
                 return;
 
             if (_configuration.ItemsToDiscard.Contains(item.ItemId))
@@ -111,7 +111,7 @@ internal sealed class ContextMenuIntegration : IDisposable
 
     private void AddToDiscardList(uint itemId)
     {
-        if (_configWindow.AddToDiscardList(itemId))
+        if (_unifiedInventoryWindow.AddToDiscardList(itemId))
         {
             _chatGui.Print(new SeString(new UIForegroundPayload(52))
                 .Append($"\ue05f ")
@@ -131,7 +131,7 @@ internal sealed class ContextMenuIntegration : IDisposable
 
     private void RemoveFromDiscardList(uint itemId)
     {
-        if (_configWindow.RemoveFromDiscardList(itemId))
+        if (_unifiedInventoryWindow.RemoveFromDiscardList(itemId))
         {
             _chatGui.Print(new SeString(new UIForegroundPayload(52))
                 .Append($"\ue05f ")
@@ -151,7 +151,7 @@ internal sealed class ContextMenuIntegration : IDisposable
         if (!_configuration.ContextMenu.Enabled)
             return false;
 
-        if (_configuration.ContextMenu.OnlyWhenConfigIsOpen && !_configWindow.IsOpen)
+        if (_configuration.ContextMenu.OnlyWhenConfigIsOpen && !_unifiedInventoryWindow.IsOpen)
             return false;
 
         return true;

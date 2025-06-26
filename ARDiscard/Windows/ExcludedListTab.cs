@@ -8,7 +8,7 @@ internal sealed class ExcludedListTab : ItemListTab
 {
     private readonly IListManager _listManager;
 
-    public ExcludedListTab(ConfigWindow parent, ItemCache itemCache, List<uint> initialItems, IListManager listManager)
+    public ExcludedListTab(UnifiedInventoryWindow parent, ItemCache itemCache, List<uint> initialItems, IListManager listManager)
         : base(parent, itemCache, initialItems)
     {
         _listManager = listManager;

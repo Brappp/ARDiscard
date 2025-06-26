@@ -23,9 +23,7 @@ public sealed class AutoDiscardPlogon : IDalamudPlugin
 {
     private readonly WindowSystem _windowSystem = new(nameof(AutoDiscardPlogon));
     private readonly Configuration _configuration;
-    private readonly ConfigWindow _configWindow;
-    private readonly DiscardWindow _discardWindow;
-    private readonly SimpleInventoryBrowserWindow _inventoryBrowserWindow;
+    private readonly UnifiedInventoryWindow _unifiedInventoryWindow;
 
     private readonly IDalamudPluginInterface _pluginInterface;
     private readonly IChatGui _chatGui;
@@ -33,6 +31,7 @@ public sealed class AutoDiscardPlogon : IDalamudPlugin
     private readonly IPluginLog _pluginLog;
     private readonly IGameGui _gameGui;
     private readonly ICommandManager _commandManager;
+    private readonly ICondition _condition;
     private readonly InventoryUtils _inventoryUtils;
     private readonly IconCache _iconCache;
     private readonly GameStrings _gameStrings;
@@ -60,18 +59,10 @@ public sealed class AutoDiscardPlogon : IDalamudPlugin
         _pluginLog = pluginLog;
         _gameGui = gameGui;
         _commandManager = commandManager;
-        _commandManager.AddHandler("/discardconfig", new CommandInfo(OpenConfig)
+        _condition = condition;
+        _commandManager.AddHandler("/idm", new CommandInfo(HandleIdmCommand)
         {
-            HelpMessage = "Configures which items to automatically discard",
-        });
-
-        _commandManager.AddHandler("/discard", new CommandInfo(OpenDiscardWindow)
-        {
-            HelpMessage = "Show what will be discarded with your current configuration",
-        });
-        _commandManager.AddHandler("/inventorybrowser", new CommandInfo(OpenInventoryBrowser)
-        {
-            HelpMessage = "Open the inventory browser to select items for discard",
+            HelpMessage = "Inventory Discard Manager - Use '/idm' to open main window, '/idm config' for settings",
         });
 
         ListManager listManager = new ListManager(_configuration);
@@ -83,32 +74,17 @@ public sealed class AutoDiscardPlogon : IDalamudPlugin
         _gameStrings = new GameStrings(dataManager, pluginLog);
 
         _pluginInterface.UiBuilder.Draw += _windowSystem.Draw;
-        _pluginInterface.UiBuilder.OpenMainUi += OpenInventoryBrowser;
-        _pluginInterface.UiBuilder.OpenConfigUi += OpenConfigUi;
+        _pluginInterface.UiBuilder.OpenMainUi += OpenInventoryManager;
+        _pluginInterface.UiBuilder.OpenConfigUi += OpenInventoryManager;
 
-        _discardWindow = new(_inventoryUtils, itemCache, _iconCache, clientState, condition, _configuration);
-        _windowSystem.AddWindow(_discardWindow);
+        _unifiedInventoryWindow = new(_inventoryUtils, itemCache, _iconCache, clientState, _configuration, listManager, _pluginInterface, condition);
+        _windowSystem.AddWindow(_unifiedInventoryWindow);
 
-        _inventoryBrowserWindow = new(_inventoryUtils, itemCache, _iconCache, clientState, _configuration, listManager);
-        _windowSystem.AddWindow(_inventoryBrowserWindow);
-
-        _configWindow = new(_pluginInterface, _configuration, itemCache, listManager, clientState, condition);
-        _windowSystem.AddWindow(_configWindow);
-
-        _configWindow.DiscardNowClicked += (_, _) => OpenDiscardWindow(string.Empty, string.Empty);
-        _configWindow.OpenInventoryBrowserClicked += (_, _) => OpenInventoryBrowser();
-        _configWindow.ConfigSaved += (_, _) => 
+        _unifiedInventoryWindow.ConfigSaved += (_, _) => 
         {
-            _discardWindow.RefreshInventory(true);
-            _inventoryBrowserWindow.RefreshInventory();
+            _unifiedInventoryWindow.RefreshInventory();
         };
-        _discardWindow.OpenConfigurationClicked += (_, _) => OpenConfigUi();
-        _discardWindow.DiscardAllClicked += (_, filter) =>
-        {
-            _taskManager?.Abort();
-            _taskManager?.Enqueue(() => DiscardNextItem(PostProcessType.ManuallyStarted, filter));
-        };
-        _inventoryBrowserWindow.DiscardSelectedClicked += (_, itemIds) =>
+        _unifiedInventoryWindow.DiscardSelectedClicked += (_, itemIds) =>
         {
             _taskManager?.Abort();
             _taskManager?.Enqueue(() => DiscardNextItem(PostProcessType.ManuallyStarted, new ItemFilter { ItemIds = itemIds }));
@@ -116,11 +92,8 @@ public sealed class AutoDiscardPlogon : IDalamudPlugin
 
         ECommonsMain.Init(_pluginInterface, this);
         _taskManager = new();
-        _contextMenuIntegration = new(_chatGui, itemCache, _configuration, listManager, _configWindow, _gameGui, contextMenu);
-        _autoDiscardIpc = new(_pluginInterface, _configuration, _discardWindow);
-
-        _clientState.Login += _discardWindow.Login;
-        _clientState.Logout += _discardWindow.Logout;
+        _contextMenuIntegration = new(_chatGui, itemCache, _configuration, listManager, _unifiedInventoryWindow, _gameGui, contextMenu);
+        _autoDiscardIpc = new(_pluginInterface, _configuration, _unifiedInventoryWindow);
     }
 
     private void MigrateConfiguration(Configuration configuration)
@@ -137,33 +110,31 @@ public sealed class AutoDiscardPlogon : IDalamudPlugin
 
 
 
-    private void OpenConfig(string command, string arguments) => OpenConfigUi();
-
-    private void OpenConfigUi()
+    private void HandleIdmCommand(string command, string arguments)
     {
-        _configWindow.IsOpen = !_configWindow.IsOpen;
+        var args = arguments.Trim().ToUpperInvariant();
+        
+        switch (args)
+        {
+            case "CONFIG":
+                // Open unified window and switch to settings tab
+                OpenInventoryManager();
+                break;
+            default:
+                OpenInventoryManager();
+                break;
+        }
     }
 
-
-
-    private void OpenDiscardWindow(string command, string arguments) => OpenDiscardUi();
-
-    private void OpenDiscardUi()
+    private void OpenInventoryManager()
     {
-        _discardWindow.IsOpen = !_discardWindow.IsOpen;
-    }
-
-    private void OpenInventoryBrowser(string command, string arguments) => OpenInventoryBrowser();
-
-    private void OpenInventoryBrowser()
-    {
-        _inventoryBrowserWindow.IsOpen = !_inventoryBrowserWindow.IsOpen;
+        _unifiedInventoryWindow.IsOpen = !_unifiedInventoryWindow.IsOpen;
     }
 
     private unsafe void DiscardNextItem(PostProcessType type, ItemFilter? itemFilter)
     {
         _pluginLog.Information($"DiscardNextItem (type = {type})");
-        _discardWindow.Locked = true;
+        _unifiedInventoryWindow.Locked = true;
 
         InventoryItem* nextItem = _inventoryUtils.GetNextItemToDiscard(itemFilter);
         if (nextItem == null)
@@ -261,26 +232,21 @@ public sealed class AutoDiscardPlogon : IDalamudPlugin
         else
             _chatGui.PrintError(error);
 
-        _discardWindow.Locked = false;
-        _discardWindow.RefreshInventory(true);
+        _unifiedInventoryWindow.Locked = false;
+        _unifiedInventoryWindow.RefreshInventory();
     }
 
     public void Dispose()
     {
-        _clientState.Login -= _discardWindow.Login;
-        _clientState.Logout -= _discardWindow.Logout;
-
         _autoDiscardIpc.Dispose();
         _contextMenuIntegration.Dispose();
         ECommonsMain.Dispose();
         _iconCache.Dispose();
 
-        _pluginInterface.UiBuilder.OpenConfigUi -= OpenConfigUi;
-        _pluginInterface.UiBuilder.OpenMainUi -= OpenInventoryBrowser;
+        _pluginInterface.UiBuilder.OpenConfigUi -= OpenInventoryManager;
+        _pluginInterface.UiBuilder.OpenMainUi -= OpenInventoryManager;
         _pluginInterface.UiBuilder.Draw -= _windowSystem.Draw;
-        _commandManager.RemoveHandler("/inventorybrowser");
-        _commandManager.RemoveHandler("/discard");
-        _commandManager.RemoveHandler("/discardconfig");
+        _commandManager.RemoveHandler("/idm");
     }
 
     private unsafe AtkUnitBase* GetDiscardAddon()

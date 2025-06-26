@@ -12,17 +12,17 @@ internal sealed class AutoDiscardIpc
     private const string IsRunning = "ARDiscard.IsRunning";
 
     private readonly Configuration _configuration;
-    private readonly DiscardWindow _discardWindow;
+    private readonly UnifiedInventoryWindow _unifiedInventoryWindow;
     private readonly ICallGateProvider<IReadOnlySet<uint>> _getItemsToDiscard;
     private readonly ICallGateProvider<bool> _isRunning;
 
     public AutoDiscardIpc(
         IDalamudPluginInterface pluginInterface,
         Configuration configuration,
-        DiscardWindow discardWindow)
+        UnifiedInventoryWindow unifiedInventoryWindow)
     {
         _configuration = configuration;
-        _discardWindow = discardWindow;
+        _unifiedInventoryWindow = unifiedInventoryWindow;
 
         _getItemsToDiscard = pluginInterface.GetIpcProvider<IReadOnlySet<uint>>(ItemsToDiscard);
         _getItemsToDiscard.RegisterFunc(GetItemsToDiscard);
@@ -42,5 +42,5 @@ internal sealed class AutoDiscardIpc
         return _configuration.ItemsToDiscard.ToImmutableHashSet();
     }
 
-    private bool CheckIsRunning() => _discardWindow.Locked;
+    private bool CheckIsRunning() => _unifiedInventoryWindow.Locked;
 }
