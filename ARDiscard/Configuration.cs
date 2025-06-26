@@ -5,25 +5,32 @@ namespace ARDiscard;
 
 internal sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 3;
-    public bool RunAfterVenture { get; set; }
-    public bool RunBeforeLogout { get; set; }
-    public List<uint> DiscardingItems { get; set; } = new();
+    public int Version { get; set; } = 4;
+
+    
+    /// <summary>
+    /// Individual items selected for discard (replaces old DiscardingItems)
+    /// </summary>
+    public HashSet<uint> SelectedDiscardItems { get; set; } = new();
+    
+    /// <summary>
+    /// Item categories where entire group is selected for discard
+    /// </summary>
+    public HashSet<uint> SelectedDiscardCategories { get; set; } = new();
+    
+    /// <summary>
+    /// Items within selected categories that user explicitly excluded
+    /// </summary>
+    public HashSet<uint> ExcludedFromCategoryDiscard { get; set; } = new();
+    
     public List<uint> BlacklistedItems { get; set; } = new();
-    public List<CharacterInfo> ExcludedCharacters { get; set; } = new();
 
     public ArmouryConfiguration Armoury { get; set; } = new();
     public ContextMenuConfiguration ContextMenu { get; set; } = new();
     public PreviewConfiguration Preview { get; set; } = new();
-    public uint IgnoreItemCountWhenAbove { get; set; } = 50;
-    public bool IgnoreItemWithSignature { get; set; }
+    public InventoryBrowserConfiguration InventoryBrowser { get; set; } = new();
 
-    public sealed class CharacterInfo
-    {
-        public ulong LocalContentId { get; set; }
-        public string? CachedPlayerName { get; set; }
-        public string? CachedWorldName { get; set; }
-    }
+
 
     public sealed class ArmouryConfiguration
     {
@@ -44,6 +51,30 @@ internal sealed class Configuration : IPluginConfiguration
     {
         public bool GroupByCategory { get; set; } = true;
         public bool ShowIcons { get; set; } = true;
+    }
+
+    public sealed class InventoryBrowserConfiguration
+    {
+        public bool GroupByCategory { get; set; } = true;
+        public bool ShowItemCounts { get; set; } = true;
+        public bool ShowIcons { get; set; } = true;
+        public bool ExpandAllGroups { get; set; }
+    }
+
+    /// <summary>
+    /// Checks if an item should be discarded based on current configuration
+    /// </summary>
+    public bool ShouldDiscardItem(uint itemId, uint categoryId)
+    {
+        // If entire category is selected and item isn't explicitly excluded
+        if (SelectedDiscardCategories.Contains(categoryId) && !ExcludedFromCategoryDiscard.Contains(itemId))
+            return true;
+            
+        // If item is individually selected
+        if (SelectedDiscardItems.Contains(itemId))
+            return true;
+            
+        return false;
     }
 
     public static Configuration CreateNew()

@@ -8,7 +8,6 @@
     <Import Project="..\LLib\RenameZip.targets"/>
 
     <ItemGroup>
-        <ProjectReference Include="..\AutoRetainerAPI\AutoRetainerAPI\AutoRetainerAPI.csproj"/>
         <ProjectReference Include="..\ECommons\ECommons\ECommons.csproj"/>
         <ProjectReference Include="..\LLib\LLib.csproj"/>
     </ItemGroup>

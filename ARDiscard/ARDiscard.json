@@ -1,14 +1,14 @@
 ﻿{
   "Name": "Discard Helper",
   "Author": "Liza Carvelli",
-  "Punchline": "Discard items automatically via a command or as a post-venture task for AutoRetainer",
-  "Description": "Small plugin to help keep your inventory organized (especially when automating retainers or submersibles) by discarding items you don't want (e.g. Stuffed Alphas)",
+  "Punchline": "Easily select and discard items from your inventory using an intuitive category browser",
+  "Description": "Inventory management plugin that lets you browse your items by category and easily select entire groups or individual items for discard. No more tedious item searching - just open the inventory browser and select what you want to get rid of!",
   "RepoUrl": "https://github.com/VeraNala/ARDiscard",
   "IconUrl": "https://github.com/VeraNala/ARDiscard/ARDiscard/ARDiscard.png",
   "Tags": [
-    "autoretainer",
-    "automation",
+    "inventory",
     "discard",
-    "yeet"
+    "cleanup",
+    "management"
   ]
 }

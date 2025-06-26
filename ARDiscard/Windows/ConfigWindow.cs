@@ -21,12 +21,12 @@ internal sealed class ConfigWindow : LWindow
     private readonly IListManager _listManager;
     private readonly IClientState _clientState;
     private readonly ICondition _condition;
-    private readonly DiscardListTab _discardListTab;
     private readonly ExcludedListTab _excludedListTab;
 
     private List<(uint ItemId, string Name)>? _allItems;
 
     public event EventHandler? DiscardNowClicked;
+    public event EventHandler? OpenInventoryBrowserClicked;
     public event EventHandler? ConfigSaved;
 
     public ConfigWindow(IDalamudPluginInterface pluginInterface, Configuration configuration, ItemCache itemCache,
@@ -50,21 +50,10 @@ internal sealed class ConfigWindow : LWindow
         };
 
         _excludedListTab = new ExcludedListTab(this, itemCache, _configuration.BlacklistedItems, listManager);
-        _discardListTab = new DiscardListTab(this, itemCache, _configuration.DiscardingItems)
-        {
-            ExcludedTab = _excludedListTab,
-        };
     }
 
     public override void DrawContent()
     {
-        bool runAfterVenture = _configuration.RunAfterVenture;
-        if (ImGui.Checkbox("[Global] Run automatically after AutoRetainer's venture", ref runAfterVenture))
-        {
-            _configuration.RunAfterVenture = runAfterVenture;
-            Save();
-        }
-
         ImGui.SameLine(ImGui.GetContentRegionAvail().X +
                        ImGui.GetStyle().WindowPadding.X -
                        ImGui.CalcTextSize("Preview Discards").X -
@@ -76,17 +65,9 @@ internal sealed class ConfigWindow : LWindow
             DiscardNowClicked!.Invoke(this, EventArgs.Empty);
         ImGui.EndDisabled();
 
-        bool runBeforeLogout = _configuration.RunBeforeLogout;
-        if (ImGui.Checkbox("[Global] Run before logging out in Multi-Mode", ref runBeforeLogout))
-        {
-            _configuration.RunBeforeLogout = runBeforeLogout;
-            Save();
-        }
-
         if (ImGui.BeginTabBar("AutoDiscardTabs"))
         {
-            DrawDiscardList();
-            DrawExcludedCharacters();
+            DrawInventoryBrowser();
             DrawExcludedItems();
             DrawExperimentalSettings();
 
@@ -94,91 +75,54 @@ internal sealed class ConfigWindow : LWindow
         }
     }
 
-    private void DrawDiscardList()
+    private void DrawInventoryBrowser()
     {
-        if (ImGui.BeginTabItem("Items to Discard"))
+        if (ImGui.BeginTabItem("Item Selection"))
         {
-            _discardListTab.Draw();
-            ImGui.EndTabItem();
-        }
-    }
-
-    private void DrawExcludedCharacters()
-    {
-        if (ImGui.BeginTabItem("Excluded Characters"))
-        {
-            if (_clientState is { IsLoggedIn: true, LocalContentId: > 0 })
-            {
-                string worldName = _clientState.LocalPlayer?.HomeWorld.ValueNullable?.Name .ToString() ?? "??";
-                ImGui.TextWrapped(
-                    $"Current Character: {_clientState.LocalPlayer?.Name} @ {worldName} ({_clientState.LocalContentId:X})");
-                ImGui.Indent(30);
-                if (_configuration.ExcludedCharacters.Any(x => x.LocalContentId == _clientState.LocalContentId))
-                {
-                    ImGui.TextColored(ImGuiColors.DalamudRed, "This character is currently excluded.");
-                    if (ImGui.Button("Remove exclusion"))
-                    {
-                        _configuration.ExcludedCharacters.RemoveAll(
-                            c => c.LocalContentId == _clientState.LocalContentId);
-                        Save();
-                    }
-                }
-                else
-                {
-                    if (_configuration.RunAfterVenture || _configuration.RunBeforeLogout)
-                    {
-                        ImGui.TextColored(ImGuiColors.HealerGreen,
-                            "This character is currently included (and will be post-processed in autoretainer).");
-                    }
-                    else
-                    {
-                        ImGui.TextColored(ImGuiColors.DalamudYellow,
-                            "This character is currently included (but running post-processing is disabled globally)");
-                    }
-
-                    if (ImGui.Button("Exclude current character"))
-                    {
-                        _configuration.ExcludedCharacters.Add(new Configuration.CharacterInfo
-                        {
-                            LocalContentId = _clientState.LocalContentId,
-                            CachedPlayerName = _clientState.LocalPlayer?.Name.ToString() ?? "??",
-                            CachedWorldName = worldName,
-                        });
-                        Save();
-                    }
-                }
-
-                ImGui.Unindent(30);
-            }
-            else
-            {
-                ImGui.TextColored(ImGuiColors.DalamudRed, "You are not logged in.");
-            }
-
-            ImGui.Separator();
-            ImGui.TextWrapped(
-                "Characters that won't run auto-cleanup after ventures (/discardall works for excluded characters)");
+            ImGui.TextWrapped("Use the Inventory Browser to select items or entire categories for automatic discard.");
             ImGui.Spacing();
-
-            ImGui.Indent(30);
-            if (_configuration.ExcludedCharacters.Count == 0)
+            
+            if (ImGui.Button("Open Inventory Browser"))
             {
-                ImGui.TextColored(ImGuiColors.DalamudGrey, "No excluded characters.");
+                // Signal to open the inventory browser window
+                OpenInventoryBrowserClicked?.Invoke(this, EventArgs.Empty);
             }
-            else
+            
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+            
+            // Show current selection summary
+            ImGui.Text("Current Selection Summary:");
+            ImGui.Indent();
+            
+            if (_configuration.SelectedDiscardCategories.Count > 0)
             {
-                foreach (var characterInfo in _configuration.ExcludedCharacters)
-                {
-                    ImGui.Text(
-                        $"{characterInfo.CachedPlayerName} @ {characterInfo.CachedWorldName} ({characterInfo.LocalContentId:X})");
-                }
+                ImGui.TextColored(ImGuiColors.HealerGreen, $"Selected Categories: {_configuration.SelectedDiscardCategories.Count}");
             }
-
-            ImGui.Unindent(30);
-
+            
+            if (_configuration.SelectedDiscardItems.Count > 0)
+            {
+                ImGui.TextColored(ImGuiColors.DalamudYellow, $"Individual Items: {_configuration.SelectedDiscardItems.Count}");
+            }
+            
+            if (_configuration.ExcludedFromCategoryDiscard.Count > 0)
+            {
+                ImGui.TextColored(ImGuiColors.DalamudRed, $"Excluded from Categories: {_configuration.ExcludedFromCategoryDiscard.Count}");
+            }
+            
+            if (_configuration.SelectedDiscardCategories.Count == 0 && _configuration.SelectedDiscardItems.Count == 0)
+            {
+                ImGui.TextColored(ImGuiColors.DalamudGrey, "No items selected for discard");
+            }
+            
+            ImGui.Unindent();
+            
             ImGui.EndTabItem();
         }
     }
+
+
 
     private void DrawExcludedItems()
     {
@@ -266,25 +210,6 @@ internal sealed class ConfigWindow : LWindow
 
             ImGui.Separator();
 
-            ImGui.SetNextItemWidth(ImGuiHelpers.GlobalScale * 100);
-            int ignoreItemCountWhenAbove = (int)_configuration.IgnoreItemCountWhenAbove;
-            if (ImGui.InputInt("Ignore stacks with >= this number of items", ref ignoreItemCountWhenAbove))
-            {
-                _configuration.IgnoreItemCountWhenAbove = (uint)Math.Max(2, ignoreItemCountWhenAbove);
-                Save();
-            }
-
-            bool ignoreItemWithSignature = _configuration.IgnoreItemWithSignature;
-            if (ImGui.Checkbox(
-                    "Ignore items with a 'crafted by' signature (manually crafted by yourself or someone else)",
-                    ref ignoreItemWithSignature))
-            {
-                _configuration.IgnoreItemWithSignature = ignoreItemWithSignature;
-                Save();
-            }
-
-            ImGui.Separator();
-
             bool groupPreviewByCategory = _configuration.Preview.GroupByCategory;
             if (ImGui.Checkbox("Group items in 'Preview' by category", ref groupPreviewByCategory))
             {
@@ -296,6 +221,30 @@ internal sealed class ConfigWindow : LWindow
             if (ImGui.Checkbox("Show icons in 'Preview'", ref showIconsInPreview))
             {
                 _configuration.Preview.ShowIcons = showIconsInPreview;
+                Save();
+            }
+
+            ImGui.Separator();
+            ImGui.Text("Inventory Browser Settings");
+
+            bool browserShowIcons = _configuration.InventoryBrowser.ShowIcons;
+            if (ImGui.Checkbox("Show icons in Inventory Browser", ref browserShowIcons))
+            {
+                _configuration.InventoryBrowser.ShowIcons = browserShowIcons;
+                Save();
+            }
+
+            bool browserShowItemCounts = _configuration.InventoryBrowser.ShowItemCounts;
+            if (ImGui.Checkbox("Show item counts in Inventory Browser", ref browserShowItemCounts))
+            {
+                _configuration.InventoryBrowser.ShowItemCounts = browserShowItemCounts;
+                Save();
+            }
+
+            bool browserExpandAllGroups = _configuration.InventoryBrowser.ExpandAllGroups;
+            if (ImGui.Checkbox("Expand all groups by default in Inventory Browser", ref browserExpandAllGroups))
+            {
+                _configuration.InventoryBrowser.ExpandAllGroups = browserExpandAllGroups;
                 Save();
             }
 
@@ -318,16 +267,26 @@ internal sealed class ConfigWindow : LWindow
 
     internal void Save()
     {
-        _configuration.DiscardingItems = _discardListTab.ToSavedItems().ToList();
         _configuration.BlacklistedItems = _excludedListTab.ToSavedItems().ToList();
         _pluginInterface.SavePluginConfig(_configuration);
 
         ConfigSaved?.Invoke(this, EventArgs.Empty);
     }
 
-    internal bool AddToDiscardList(uint itemId) => _discardListTab.AddToDiscardList(itemId);
+    internal bool AddToDiscardList(uint itemId) 
+    {
+        _configuration.SelectedDiscardItems.Add(itemId);
+        Save();
+        return true;
+    }
 
-    internal bool RemoveFromDiscardList(uint itemId) => _discardListTab.RemoveFromDiscardList(itemId);
+    internal bool RemoveFromDiscardList(uint itemId) 
+    {
+        bool removed = _configuration.SelectedDiscardItems.Remove(itemId);
+        if (removed)
+            Save();
+        return removed;
+    }
 
     public bool CanItemBeConfigured(uint itemId)
     {

@@ -77,9 +77,30 @@ internal sealed class InventoryUtils
                 RightSideGearInventoryTypes, itemCounts, gearsetItems));
         }
 
-        return toDiscard
-            .Where(x => itemCounts[x.InventoryItem->ItemId] < _configuration.IgnoreItemCountWhenAbove)
-            .ToList();
+        return toDiscard;
+    }
+
+    public unsafe List<ItemWrapper> GetAllInventoryItems()
+    {
+        List<ItemWrapper> allItems = new List<ItemWrapper>();
+        Dictionary<uint, int> itemCounts = new();
+
+        InventoryManager* inventoryManager = InventoryManager.Instance();
+        foreach (InventoryType inventoryType in DefaultInventoryTypes)
+            allItems.AddRange(GetAllItemsInContainer(inventoryManager, inventoryType, itemCounts, NoGearsetItems));
+
+        if (_configuration.Armoury.DiscardFromArmouryChest)
+        {
+            var gearsetItems = GetAllGearsetItems();
+            allItems.AddRange(GetAllArmouryItems(_configuration.Armoury.CheckMainHandOffHand, inventoryManager,
+                MainHandOffHandInventoryTypes, itemCounts, gearsetItems));
+            allItems.AddRange(GetAllArmouryItems(_configuration.Armoury.CheckLeftSideGear, inventoryManager,
+                LeftSideGearInventoryTypes, itemCounts, gearsetItems));
+            allItems.AddRange(GetAllArmouryItems(_configuration.Armoury.CheckRightSideGear, inventoryManager,
+                RightSideGearInventoryTypes, itemCounts, gearsetItems));
+        }
+
+        return allItems;
     }
 
     private unsafe ReadOnlyCollection<ItemWrapper> GetArmouryItemsToDiscard(bool condition, InventoryManager* inventoryManager,
@@ -93,6 +114,44 @@ internal sealed class InventoryUtils
         }
 
         return items.AsReadOnly();
+    }
+
+    private unsafe ReadOnlyCollection<ItemWrapper> GetAllArmouryItems(bool condition, InventoryManager* inventoryManager,
+        InventoryType[] inventoryTypes, Dictionary<uint, int> itemCounts, List<uint>? gearsetItems)
+    {
+        List<ItemWrapper> items = new();
+        if (condition)
+        {
+            foreach (InventoryType inventoryType in inventoryTypes)
+                items.AddRange(GetAllItemsInContainer(inventoryManager, inventoryType, itemCounts, gearsetItems));
+        }
+
+        return items.AsReadOnly();
+    }
+
+    private unsafe ReadOnlyCollection<ItemWrapper> GetAllItemsInContainer(InventoryManager* inventoryManager,
+        InventoryType inventoryType, Dictionary<uint, int> itemCounts,
+        IReadOnlyList<uint>? gearsetItems)
+    {
+        List<ItemWrapper> allItems = new List<ItemWrapper>();
+        InventoryContainer* container = inventoryManager->GetInventoryContainer(inventoryType);
+        
+        for (int i = 0; i < container->Size; ++i)
+        {
+            var item = container->GetInventorySlot(i);
+            if (item != null && item->ItemId != 0)
+            {
+                if (itemCounts.TryGetValue(item->ItemId, out int itemCount))
+                    itemCounts[item->ItemId] = itemCount + item->Quantity;
+                else
+                    itemCounts[item->ItemId] = item->Quantity;
+
+                // Add all items to the list (not just ones marked for discard)
+                allItems.Add(new ItemWrapper { InventoryItem = item });
+            }
+        }
+
+        return allItems.AsReadOnly();
     }
 
     public unsafe InventoryItem* GetNextItemToDiscard(ItemFilter? itemFilter)
@@ -135,11 +194,10 @@ internal sealed class InventoryUtils
                     itemInfo.ILvl >= _configuration.Armoury.MaximumGearItemLevel)
                     continue;
 
-                if (_configuration.IgnoreItemWithSignature && item->CrafterContentId != 0)
-                    continue;
+
 
                 //PluginLog.Verbose($"{i} → {item->ItemID}");
-                if (_configuration.DiscardingItems.Contains(item->ItemId))
+                if (_configuration.ShouldDiscardItem(item->ItemId, itemInfo.UiCategory))
                 {
                     _pluginLog.Verbose(
                         $"Found item {item->ItemId} to discard in inventory {inventoryType} in slot {i}");
