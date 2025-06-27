@@ -35,6 +35,7 @@ public sealed class AutoDiscardPlogon : IDalamudPlugin
     private readonly InventoryUtils _inventoryUtils;
     private readonly IconCache _iconCache;
     private readonly GameStrings _gameStrings;
+    private readonly UniversalisClient _universalisClient;
 
     [SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "Obsolete in ECommons")]
     private readonly TaskManager _taskManager;
@@ -72,12 +73,13 @@ public sealed class AutoDiscardPlogon : IDalamudPlugin
 
         _iconCache = new IconCache(textureProvider);
         _gameStrings = new GameStrings(dataManager, pluginLog);
+        _universalisClient = new UniversalisClient(_configuration);
 
         _pluginInterface.UiBuilder.Draw += _windowSystem.Draw;
         _pluginInterface.UiBuilder.OpenMainUi += OpenInventoryManager;
         _pluginInterface.UiBuilder.OpenConfigUi += OpenInventoryManager;
 
-        _unifiedInventoryWindow = new(_inventoryUtils, itemCache, _iconCache, clientState, _configuration, listManager, _pluginInterface, condition);
+        _unifiedInventoryWindow = new(_inventoryUtils, itemCache, _iconCache, clientState, _configuration, listManager, _pluginInterface, condition, _universalisClient);
         _windowSystem.AddWindow(_unifiedInventoryWindow);
 
         _unifiedInventoryWindow.ConfigSaved += (_, _) => 
@@ -240,6 +242,7 @@ public sealed class AutoDiscardPlogon : IDalamudPlugin
     {
         _autoDiscardIpc.Dispose();
         _contextMenuIntegration.Dispose();
+        _universalisClient.Dispose();
         ECommonsMain.Dispose();
         _iconCache.Dispose();
 

@@ -19,6 +19,7 @@ internal sealed class Configuration : IPluginConfiguration
     public ContextMenuConfiguration ContextMenu { get; set; } = new();
     public PreviewConfiguration Preview { get; set; } = new();
     public InventoryBrowserConfiguration InventoryBrowser { get; set; } = new();
+    public MarketPriceConfiguration MarketPrice { get; set; } = new();
 
 
 
@@ -49,6 +50,33 @@ internal sealed class Configuration : IPluginConfiguration
         public bool ShowItemCounts { get; set; } = true;
         public bool ShowIcons { get; set; } = true;
         public bool ExpandAllGroups { get; set; }
+    }
+
+    public sealed class MarketPriceConfiguration
+    {
+        public bool ShowPrices { get; set; } = true;
+        public bool ShowOnSeparateLine { get; set; } = false;
+        public bool ShowTotalValue { get; set; } = true;
+        
+        /// <summary>
+        /// Query data center instead of individual world for better price coverage
+        /// </summary>
+        public bool UseDataCenter { get; set; } = true;
+        
+        /// <summary>
+        /// Fallback to data center if world query fails
+        /// </summary>
+        public bool FallbackToDataCenter { get; set; } = true;
+        
+        /// <summary>
+        /// Show HQ indicator in price display
+        /// </summary>
+        public bool ShowHqIndicator { get; set; } = true;
+        
+        /// <summary>
+        /// Cache timeout in minutes
+        /// </summary>
+        public int CacheTimeoutMinutes { get; set; } = 5;
     }
 
     /// <summary>
